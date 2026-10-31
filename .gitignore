@@ -1,4 +1,5 @@
 node_modules/
 client/dist/
-server/data/
+server/data/*
+!server/data/login-credentials.json
 .env

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, useLive } from '../api.js';
+import { api, storage, store, useLive } from '../api.js';
 
 const EMPTY = { fullName: '', age: '', phone: '' };
 
@@ -39,7 +39,14 @@ export default function Book() {
     setBusy(true);
     setError('');
     try {
-      setBooked(await api('/api/booking', { method: 'POST', body: { department, slotStart: slot.start, ...form } }));
+      const booking = await api('/api/booking', { method: 'POST', body: { department, slotStart: slot.start, ...form } });
+      setBooked(booking);
+      try {
+        const codes = JSON.parse(storage('patient-bookings', '[]'));
+        store('patient-bookings', JSON.stringify([booking.bookingCode, ...codes.filter((code) => code !== booking.bookingCode)]));
+      } catch {
+        store('patient-bookings', JSON.stringify([booking.bookingCode]));
+      }
     } catch (err) {
       setError(err.message);
       loadSlots();

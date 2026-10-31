@@ -60,6 +60,19 @@ The tables are created automatically on startup. Embedded data and uploaded repo
 | Doctor / lab dashboard | `/staff/doctor`, `/staff/lab` | Pick a counter, call the next patient, complete the stage, announce again, mark missed / restore. Doctors order lab tests; the lab releases fictional reports (text summary + optional PDF/PNG/JPG/TXT up to 5 MB) |
 | Queue display | `/display` | Big-screen board: tokens being called now, next tokens, department status, approximate wait, and the rotating **hall code**. Flashes each call; optional spoken announcements |
 
+## Demo role sign-in
+
+The home page provides separate Doctor and Patient sign-in groups. Demo credentials are stored in
+`server/data/login-credentials.json` and imported into the frontend at build time:
+
+| Role | ID | Password |
+|---|---|---|
+| Doctor | `doctor.demo` | `Doctor@123` |
+| Patient | `patient.demo` | `Patient@123` |
+
+These are frontend-only demo gates, not server authentication. The patient portal still requires the visit token
+and PIN for personal queue details and reports. Do not use real credentials or patient information.
+
 ## Demo script (about 3 minutes)
 
 1. **Registration desk**: register "Asha Verma (fictional)". Note the token (`T-001`) and the PIN.
@@ -174,7 +187,7 @@ existing registration → doctor → lab → report flow takes over unchanged.
 
 ## Known limits / next steps
 
-- **Staff screens and the display have no login.** Add staff accounts and roles before using this anywhere real. Until then anyone who can reach the server could join the display room and read the hall code.
+- **Role checks are frontend-only demo gates.** Server API endpoints are not authenticated for doctor/staff access. Add server-side staff accounts and authorization before using this anywhere real; anyone who can reach the server could otherwise access staff APIs or join the display room and read the hall code.
 - Only Doctor Consultation takes bookings. Add more departments in `BOOKING` in `server/src/booking.js`.
 - One token sequence per day (`T-001`, `T-002`, …), reset at midnight server time.
 - Rate limiting and session signing keys are in memory. Set `SESSION_SECRET` to keep sessions valid across restarts.

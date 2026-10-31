@@ -4,11 +4,13 @@ import { api, timeOf, useLive, useMeta } from '../api.js';
 import DeskPanel from '../components/DeskPanel.jsx';
 import ReportForm from '../components/ReportForm.jsx';
 
-export default function Staff() {
-  const { dept } = useParams();
+export default function Staff({ departmentOverride }) {
+  const { dept: routeDepartment } = useParams();
+  const dept = departmentOverride || routeDepartment;
   const meta = useMeta();
   const [overview, setOverview] = useState(null);
   const [message, setMessage] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
   const live = useLive(() => api('/api/staff/overview').then(setOverview).catch(() => {}));
 
   if (!['doctor', 'lab'].includes(dept)) return <p>Unknown dashboard.</p>;
@@ -18,11 +20,21 @@ export default function Staff() {
   const awaiting = overview.labOrders.filter((o) => o.status === 'ordered' && o.sampleCollected);
   const released = overview.labOrders.filter((o) => o.status === 'reported');
 
+  async function resetDemo() {
+    if (!window.confirm('Delete all demo visits, queues, bookings and reports, then add fresh sample bookings?')) return;
+    try {
+      await api('/api/admin/reset', { method: 'POST' });
+      setResetMessage('Demo data reset.');
+    } catch (error) {
+      setResetMessage(error.message);
+    }
+  }
+
   return (
     <div>
       <div className="tabs">
-        <NavLink to="/staff/doctor">Doctor dashboard</NavLink>
-        <NavLink to="/staff/lab">Lab dashboard</NavLink>
+        <NavLink to={departmentOverride ? '/doctor/queue/doctor' : '/staff/doctor'}>Doctor dashboard</NavLink>
+        <NavLink to={departmentOverride ? '/doctor/laboratory' : '/staff/lab'}>Lab dashboard</NavLink>
       </div>
       <div className="grid grid--2">
         <DeskPanel key={dept} dept={overview.departments[dept]} meta={meta} live={live} />
@@ -80,6 +92,18 @@ export default function Staff() {
           </section>
         )}
       </div>
+      {dept === 'doctor' && (
+        <section className="staff-tools">
+          <div>
+            <h2>Demo data</h2>
+            <p className="muted small">Reset queue activity and restore the sample bookings.</p>
+          </div>
+          <div className="row">
+            {resetMessage && <span className="muted small" role="status">{resetMessage}</span>}
+            <button className="btn btn--ghost" onClick={resetDemo}>Reset demo data</button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

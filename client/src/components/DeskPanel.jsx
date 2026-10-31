@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { api, minutesSince, storage, store, timeOf } from '../api.js';
 import ReportForm from './ReportForm.jsx';
 
@@ -15,9 +16,14 @@ export default function DeskPanel({ dept, meta, live }) {
     setMessage(null);
     try {
       const result = await fn();
-      if (success) setMessage({ ok: true, text: success(result) });
+      if (success) {
+        const text = success(result);
+        setMessage({ ok: true, text });
+        toast.success(text);
+      }
     } catch (err) {
       setMessage({ ok: false, text: err.message });
+      toast.error(err.message);
     } finally {
       setBusy(false);
     }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, getSocket, useLive } from '../api.js';
+import ThemeButton from '../components/ThemeButton.jsx';
 
 const STATUS_LABEL = { serving: 'Serving', waiting: 'Waiting', idle: 'Open' };
 
@@ -59,6 +60,7 @@ export default function Display() {
           <button className="btn btn--dark" onClick={() => setSound(!sound)}>
             {sound ? '🔊 Announcements on' : '🔈 Enable announcements'}
           </button>
+          <ThemeButton className="theme-button--display" />
           <span className={live ? 'dot dot--on' : 'dot'} />
           <time>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
         </div>

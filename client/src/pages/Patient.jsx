@@ -46,7 +46,7 @@ function SignIn({ onSession }) {
 
   return (
     <div className="narrow">
-      <h1>Patient view</h1>
+      <h1>Your visit</h1>
       <form className="card form" onSubmit={submit}>
         <p>Enter the token and 6-digit PIN printed on your visit slip.</p>
         <label>
