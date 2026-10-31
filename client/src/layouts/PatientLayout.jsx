@@ -1,9 +1,9 @@
 import { CalendarDays, CircleHelp, ClipboardList, FileText, LayoutDashboard, LogOut, Bell, UserRound } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { clearDemoAuth, getDemoAuth } from '../auth.js';
 import { patientSession } from '../api.js';
 import ThemeButton from '../components/ThemeButton.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 const NAV = [
   { to: '/patient', end: true, label: 'Overview', icon: LayoutDashboard },
@@ -28,12 +28,12 @@ const TITLES = {
 export default function PatientLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const user = getDemoAuth();
+  const { user, logout } = useAuth();
   const title = TITLES[pathname] || 'Patient care';
 
-  function signOut() {
+  async function signOut() {
     patientSession.set(null);
-    clearDemoAuth();
+    await logout();
     navigate('/login', { replace: true });
   }
 
@@ -50,7 +50,7 @@ export default function PatientLayout() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="user-mini"><span className="avatar avatar--patient"><UserRound size={17} /></span><span><strong>{user?.displayName || 'Demo Patient'}</strong><small>Patient account</small></span></div>
+          <div className="user-mini"><span className="avatar avatar--patient"><UserRound size={17} /></span><span><strong>{user?.display_name || user?.phone_number || 'Patient'}</strong><small>Patient account</small></span></div>
           <button className="sidebar-link sidebar-link--button" onClick={signOut}><LogOut size={18} /><span>Log out</span></button>
         </div>
       </aside>

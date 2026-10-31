@@ -3,38 +3,64 @@ import { ArrowLeft, ArrowRight, Phone, UserRound } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { setDemoAuth } from '../../auth.js';
-
-const DEMO_OTP = '123456';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 
 export default function PatientLogin() {
   const navigate = useNavigate();
+  const { requestPatientOtp, verifyPatientOtp } = useAuth();
   const [step, setStep] = useState('phone');
   const [phone, setPhone] = useState('9876543210');
   const [otp, setOtp] = useState('');
+  const [developmentOtp, setDevelopmentOtp] = useState(null);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function requestCode(event) {
+  async function requestCode(event) {
     event.preventDefault();
     const digits = phone.replace(/\D/g, '');
-    if (digits.length < 10) {
-      setError('Enter a valid 10-digit phone number.');
+    const e164Phone = phone.trim().startsWith('+')
+      ? `+${digits}`
+      : digits.length === 10
+        ? `+91${digits}`
+        : `+${digits}`;
+    if (!/^\+[1-9]\d{7,14}$/.test(e164Phone)) {
+      setError('Enter a valid phone number with country code, or a 10-digit Indian number.');
       return;
     }
-    setPhone(digits.slice(-10));
+
     setError('');
-    setStep('otp');
+    setIsSubmitting(true);
+    try {
+      const response = await requestPatientOtp(e164Phone);
+      setPhone(e164Phone);
+      setDevelopmentOtp(response.development_otp);
+      setOtp('');
+      setStep('otp');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Could not request a verification code.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  function verifyCode(event) {
+  async function verifyCode(event) {
     event.preventDefault();
-    if (otp !== DEMO_OTP) {
-      setError('That demo code is not correct.');
+    if (!/^\d{6}$/.test(otp)) {
+      setError('Enter the six-digit verification code.');
       return;
     }
-    setDemoAuth({ role: 'patient', displayName: 'Rahul Sharma', phone });
-    toast.success('Demo phone number verified.');
-    navigate('/patient', { replace: true });
+
+    setError('');
+    setIsSubmitting(true);
+    try {
+      await verifyPatientOtp(phone, otp);
+      toast.success('Phone number verified.');
+      navigate('/patient', { replace: true });
+    } catch (verificationError) {
+      setError(verificationError instanceof Error ? verificationError.message : 'Could not verify this phone number.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -51,7 +77,7 @@ export default function PatientLogin() {
         <div>
           <p className="eyebrow">Patient portal</p>
           <h2>{step === 'phone' ? 'Continue with your phone' : 'Verify your number'}</h2>
-          <p className="muted">{step === 'phone' ? 'We’ll use a demo verification code for this prototype.' : `Enter the code shown below for ${phone}.`}</p>
+          <p className="muted">{step === 'phone' ? 'We’ll send a verification code to your phone.' : `Enter the six-digit code sent to ${phone}.`}</p>
         </div>
         {step === 'phone' ? (
           <label>
@@ -64,12 +90,14 @@ export default function PatientLogin() {
               One-time code
               <input autoFocus inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit code" required />
             </label>
-            <p className="demo-hint">Demo code <code>{DEMO_OTP}</code> · No SMS is sent.</p>
-            <button type="button" className="text-button" onClick={() => { setStep('phone'); setOtp(''); setError(''); }}>Change phone number</button>
+            {developmentOtp && <p className="demo-hint">Development verification code <code>{developmentOtp}</code></p>}
+            <button type="button" className="text-button" disabled={isSubmitting} onClick={() => { setStep('phone'); setOtp(''); setDevelopmentOtp(null); setError(''); }}>Change phone number</button>
           </>
         )}
         {error && <p className="error" role="alert">{error}</p>}
-        <button className="btn btn--primary btn--block" type="submit">{step === 'phone' ? <>Continue <ArrowRight size={17} /></> : 'Verify and continue'}</button>
+        <button className="btn btn--primary btn--block" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Please wait…' : step === 'phone' ? <>Continue <ArrowRight size={17} /></> : 'Verify and continue'}
+        </button>
         <p className="muted small">Need help? <a href="mailto:support@visitweave.demo">Contact patient support</a>.</p>
         <p className="muted small">Viewing queue details or reports also requires the token and PIN on your visit slip.</p>
       </motion.form>

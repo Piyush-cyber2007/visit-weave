@@ -8,15 +8,78 @@ export class ApiError extends Error {
   }
 }
 
+let accessToken = null;
+let authCallbacks = {};
+let refreshInFlight = null;
+
+export function setAuthAccessToken(token) {
+  accessToken = token || null;
+}
+
+export function configureAuthCallbacks(callbacks) {
+  authCallbacks = callbacks;
+  return () => {
+    if (authCallbacks === callbacks) authCallbacks = {};
+  };
+}
+
+async function responseError(res) {
+  const data = await res.json().catch(() => ({}));
+  const message = typeof data.error === 'string'
+    ? data.error
+    : data.error?.message || data.message || `Request failed (${res.status})`;
+  return new ApiError(res.status, message);
+}
+
+export async function authRequest(path, { method = 'POST', body } = {}) {
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const res = await fetch(path, {
+    method,
+    headers,
+    credentials: 'same-origin',
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) throw await responseError(res);
+  return res.status === 204 ? null : res.json();
+}
+
+async function refreshAccessToken() {
+  if (!refreshInFlight) {
+    refreshInFlight = authRequest('/api/auth/refresh')
+      .then((session) => {
+        accessToken = session.access_token;
+        authCallbacks.onSession?.(session);
+        return accessToken;
+      })
+      .catch((error) => {
+        accessToken = null;
+        authCallbacks.onExpired?.();
+        throw error;
+      })
+      .finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
+
 export async function api(path, { method = 'GET', body, form, session } = {}) {
   const headers = {};
   if (body) headers['Content-Type'] = 'application/json';
-  if (session) headers.Authorization = `Bearer ${session}`;
-  const res = await fetch(path, { method, headers, body: form ?? (body ? JSON.stringify(body) : undefined) });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, data.error || `Request failed (${res.status})`);
+  const makeRequest = (token) => {
+    if (token) headers.Authorization = `Bearer ${token}`;
+    else delete headers.Authorization;
+    return fetch(path, { method, headers, body: form ?? (body ? JSON.stringify(body) : undefined) });
+  };
+
+  let res = await makeRequest(session || accessToken);
+  if (res.status === 401 && !session && accessToken && !path.startsWith('/api/auth/')) {
+    try {
+      res = await makeRequest(await refreshAccessToken());
+    } catch {
+      throw await responseError(res);
+    }
   }
+  if (!res.ok) throw await responseError(res);
   return res.headers.get('content-type')?.includes('json') ? res.json() : res.blob();
 }
 

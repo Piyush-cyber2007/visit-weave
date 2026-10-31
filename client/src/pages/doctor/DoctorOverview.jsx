@@ -3,7 +3,7 @@ import { Activity, ArrowDownRight, ArrowUpRight, Clock3, FlaskConical, Search, U
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { api, minutesSince, useLive } from '../../api.js';
-import { getDemoAuth } from '../../auth.js';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 
 const DEPARTMENTS = ['registration', 'doctor', 'lab'];
 const PAGE_SIZE = 8;
@@ -16,7 +16,7 @@ export default function DoctorOverview() {
   const [status, setStatus] = useState('all');
   const [sort, setSort] = useState('longest');
   const [page, setPage] = useState(0);
-  const user = getDemoAuth();
+  const { user } = useAuth();
   const live = useLive(() => api('/api/staff/overview').then((data) => { setOverview(data); setError(''); }).catch((cause) => setError(cause.message)));
 
   if (!overview) return <div className="loading-state"><span className="spinner" />{error || 'Loading live queue overview…'}</div>;
@@ -45,7 +45,7 @@ export default function DoctorOverview() {
 
   return (
     <motion.div className="doctor-dashboard" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="dashboard-welcome"><div><p className="eyebrow">Saturday, October 31, 2026 · General Medicine</p><h2>Welcome back, {user?.displayName || 'Dr. Arjun Sharma'}.</h2><p className="muted">A live view of today’s patient flow.</p></div><Link className="btn btn--primary" to="/doctor/queue/doctor">Open live queue <Activity size={17} /></Link></div>
+      <div className="dashboard-welcome"><div><p className="eyebrow">Saturday, October 31, 2026 · General Medicine</p><h2>Welcome back, {user?.display_name || 'Doctor'}.</h2><p className="muted">A live view of today’s patient flow.</p></div><Link className="btn btn--primary" to="/doctor/queue/doctor">Open live queue <Activity size={17} /></Link></div>
       {error && <p className="error" role="alert">Live queue refresh failed: {error}</p>}
       <section className="summary-grid summary-grid--doctor">
         {stats.map(({ label, value, note, icon: Icon, trend }, index) => <article className="summary-card" key={label} style={{ '--card-index': index }}><span className="summary-card__icon"><Icon size={18} /></span><span className="summary-card__label">{label}</span><strong>{value}</strong><small>{note}</small><span className="summary-card__trend">{index % 2 ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}{trend}</span></article>)}

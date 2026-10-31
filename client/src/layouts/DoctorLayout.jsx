@@ -1,8 +1,8 @@
 import { Activity, BarChart3, Bell, ClipboardList, FileText, FlaskConical, LayoutDashboard, LogOut, Settings, Stethoscope, UserRound, UsersRound } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { clearDemoAuth, getDemoAuth } from '../auth.js';
 import ThemeButton from '../components/ThemeButton.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 const NAV = [
   { to: '/doctor', end: true, label: 'Overview', icon: LayoutDashboard },
@@ -30,11 +30,11 @@ const TITLES = {
 export default function DoctorLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const user = getDemoAuth();
+  const { user, logout } = useAuth();
   const title = pathname.includes('/doctor/queue/') ? 'Live queue' : TITLES[pathname] || 'Staff workspace';
 
-  function signOut() {
-    clearDemoAuth();
+  async function signOut() {
+    await logout();
     navigate('/login', { replace: true });
   }
 
@@ -51,7 +51,7 @@ export default function DoctorLayout() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="user-mini"><span className="avatar avatar--doctor"><Stethoscope size={17} /></span><span><strong>{user?.displayName || 'Dr. Arjun Sharma'}</strong><small>Hospital staff · Demo</small></span></div>
+          <div className="user-mini"><span className="avatar avatar--doctor"><Stethoscope size={17} /></span><span><strong>{user?.display_name || 'Doctor'}</strong><small>Hospital staff</small></span></div>
           <button className="sidebar-link sidebar-link--button" onClick={signOut}><LogOut size={18} /><span>Log out</span></button>
         </div>
       </aside>

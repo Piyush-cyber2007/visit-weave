@@ -1,9 +1,9 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { clearDemoAuth, getDemoAuth, hasDemoRole } from './auth.js';
 import { patientSession } from './api.js';
 import ThemeButton from './components/ThemeButton.jsx';
+import { useAuth } from './contexts/AuthContext.jsx';
 import { useTheme } from './contexts/ThemeContext.jsx';
 import DoctorLayout from './layouts/DoctorLayout.jsx';
 import PatientLayout from './layouts/PatientLayout.jsx';
@@ -33,15 +33,15 @@ export default function App() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const auth = getDemoAuth();
+  const { user, role, logout } = useAuth();
   const fullScreen = pathname.startsWith('/display');
   const isPortal = pathname.startsWith('/patient') || pathname.startsWith('/doctor');
-  const homePath = auth?.role === 'doctor' ? '/doctor' : '/patient';
-  const bookPath = auth?.role === 'patient' ? '/patient/book' : '/login/patient';
+  const homePath = role === 'doctor' ? '/doctor' : '/patient';
+  const bookPath = role === 'patient' ? '/patient/book' : '/login/patient';
 
-  function signOut() {
+  async function signOut() {
     patientSession.set(null);
-    clearDemoAuth();
+    await logout();
     navigate('/login', { replace: true });
   }
 
@@ -49,17 +49,17 @@ export default function App() {
     <div className={fullScreen ? 'app app--display' : 'app'} data-theme={theme}>
       {!fullScreen && !isPortal && (
         <header className="topbar">
-          <NavLink to={auth ? homePath : '/login'} className="brand">
+          <NavLink to={user ? homePath : '/login'} className="brand">
               <span className="brand__mark">V</span>
             <span>
               VisitWeave <small>Smarter Queues. Better Care.</small>
             </span>
           </NavLink>
           <nav className="topnav">
-            {auth && <NavLink to={homePath}>{auth.role === 'doctor' ? 'Staff workspace' : 'Patient portal'}</NavLink>}
+            {user && <NavLink to={homePath}>{role === 'doctor' ? 'Staff workspace' : 'Patient portal'}</NavLink>}
             <NavLink to={bookPath}>Book appointment</NavLink>
             <NavLink to="/display">Display</NavLink>
-            {auth ? (
+            {user ? (
               <button className="topnav__logout" onClick={signOut}>Sign out</button>
             ) : (
               <NavLink to="/login">Sign in</NavLink>
@@ -111,13 +111,12 @@ export default function App() {
 
 function RoleRoute({ role, children }) {
   const location = useLocation();
-  const auth = getDemoAuth();
+  const { user, role: userRole, ready } = useAuth();
   const hasPatientSession = role === 'patient' && Boolean(patientSession.get());
 
-  if (auth) {
-    if (hasDemoRole(auth, role)) return children;
-    return <Navigate to={auth.role === 'doctor' ? '/doctor' : '/patient'} replace />;
-  }
+  if (!ready) return <div className="loading-state"><span className="spinner" />Restoring session…</div>;
+  if (user && userRole === role) return children;
+  if (user) return <Navigate to={userRole === 'doctor' ? '/doctor' : '/patient'} replace />;
   if (hasPatientSession && role === 'patient') return children;
   return <Navigate to={role === 'doctor' ? '/login/doctor' : '/login/patient'} state={{ from: location }} replace />;
 }
