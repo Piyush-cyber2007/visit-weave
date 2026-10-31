@@ -1,0 +1,17 @@
+{
+  "name": "hospital-queue-coordination",
+  "private": true,
+  "description": "One visit. One token. Every hospital queue connected.",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client",
+    "start": "npm start -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
